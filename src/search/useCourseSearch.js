@@ -16,5 +16,34 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client.js";
 
 export function useCourseSearch(query) {
-  throw new Error("TODO");
+  const [results, setResults] = useState([]);
+  const [status, setStatus] = useState("idle");
+
+  const trimmed = query.trim();
+
+  useEffect(() => {
+    if (!trimmed) return; // blank → don't fetch at all
+
+    let ignore = false; // "is this request outdated?"
+    setStatus("loading");
+
+    const params = new URLSearchParams({ q: trimmed });
+    apiFetch(`/api/courses?${params}`)
+      .then((data) => {
+        if (ignore) return; // a newer search started → throw this away
+        setResults(data);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (ignore) return;
+        setStatus("error");
+      });
+
+    return () => {
+      ignore = true;
+    }; // runs when the query changes → marks this one outdated
+  }, [trimmed]); // re-run ONLY when the trimmed text changes
+
+  if (!trimmed) return { results: [], status: "idle" };
+  return { results, status };
 }
